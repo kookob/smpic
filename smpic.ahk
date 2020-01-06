@@ -1,6 +1,7 @@
 ﻿;###########################################################
 ; @author ob
-; @date 20180425
+; @version 2.0.0
+; @date 20200106
 ; http://github.com/kookob/smpic
 ;###########################################################
 #SingleInstance,Force
@@ -26,7 +27,7 @@ upload(file){
 		objParam := {"ssl": False, "format":"json", "smfile": [file]}
 		CreateFormData(PostData, hdr_ContentType, objParam)
 		whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-		whr.Open("POST", "https://sm.ms/api/upload/", True)
+		whr.Open("POST", "https://sm.ms/api/v2/upload?inajax=1", True)
 		whr.SetRequestHeader("Content-Type", hdr_ContentType)
 		whr.Send(PostData)
 		whr.WaitForResponse()
@@ -65,8 +66,15 @@ Loop, parse, filepathList, `n, `r
 			ToolTip, (%A_Index%)上传成功，url已复制到剪切板, A_CaretX, A_CaretY+20
 			Sleep 1000
 			ToolTip, 
+		} else if(resultJson.code = "image_repeated"){
+			msg := "(" . A_Index . ")" . resultJson.error . "`n上传图片已存在，原有url已复制到剪切板"
+			msgbox % msg
+			if(clipboard <> "") {
+				clipboard := clipboard . "`n"
+			}
+			clipboard := clipboard . resultJson.images	;原始地址
 		} else {
-			msgbox % resultJson.msg
+			msgbox % resultJson.error
 		}
 		if(log = 1) {
 			;日志记录
@@ -136,10 +144,9 @@ Gui,99:Font,Bold
 Gui,99:Add,Text,x+10 yp+10,致谢
 Gui,99:Font
 Gui,99:Add,Text,y+10,感谢@Showfom提供这么好的图床(https://sm.ms)
-Gui,99:Add,Text,y+5, 在这个特殊的日子，感谢我亲爱的家人
 
 Gui,99:Font,Bold
-Gui,99:Add,Text,y+20, %applicationname% v1.0 (20180425)
+Gui,99:Add,Text,y+20, %applicationname% v2.0.0 (20200106)
 Gui,99:Font
 Gui,99:Add,Text,y+10,选中图片(可多选)按快捷键(默认:Ctrl+Alt+S)上传图片到sm.ms，保存图片地址到剪切板
 Gui,99:Font,CBlue Underline

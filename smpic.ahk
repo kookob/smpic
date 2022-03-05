@@ -1,7 +1,7 @@
 ﻿;###########################################################
 ; @author ob
-; @version 2.0.0
-; @date 20200106
+; @version 2.0.1
+; @date 20220305
 ; http://github.com/kookob/smpic
 ;###########################################################
 #SingleInstance,Force
@@ -20,15 +20,17 @@ Gosub,TRAYMENU
 
 #Include %A_ScriptDir%\CreateFormData.ahk
 #Include %A_ScriptDir%\JSON.ahk
+
 ;上传图片
-upload(file){
+upload(file, secretToken){
 	IfExist % file 
 	{
-		objParam := {"ssl": False, "format":"json", "smfile": [file]}
+		objParam := {"format":"json", "smfile": [file]}
 		CreateFormData(PostData, hdr_ContentType, objParam)
 		whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-		whr.Open("POST", "https://sm.ms/api/v2/upload?inajax=1", True)
+		whr.Open("POST", "https://sm.ms/api/v2/upload", True)
 		whr.SetRequestHeader("Content-Type", hdr_ContentType)
+		whr.SetRequestHeader("Authorization", secretToken)
 		whr.Send(PostData)
 		whr.WaitForResponse()
 		return whr.ResponseText
@@ -37,7 +39,7 @@ upload(file){
 
 IniRead, key, %applicationname%.ini, Settings, key, ^!s
 IniRead, urlType, %applicationname%.ini, Settings, urlType, 0
-IniRead, log, %applicationname%.ini, Settings, log, 1
+IniRead, secretToken, %applicationname%.ini, Settings, secretToken, ReplaceWithYourSecretToken
 Hotkey, %key%, UploadLabel, On
 return
 
@@ -51,7 +53,7 @@ Loop, parse, filepathList, `n, `r
 {
 	filepath = %A_LoopField%
 	SplitPath, filepath, filename
-	result := upload(filepath)
+	result := upload(filepath, secretToken)
 	if(result <> ""){
 		resultJson := JSON.Load(result)
 		if(resultJson.code = "success"){
@@ -75,11 +77,6 @@ Loop, parse, filepathList, `n, `r
 			clipboard := clipboard . resultJson.images	;原始地址
 		} else {
 			msgbox % resultJson.error
-		}
-		if(log = 1) {
-			;日志记录
-			FormatTime, now, , yyyy-MM-dd HH:mm:ss
-			FileAppend, [%now%] %filepath%`n%result%`n----------------------------------------`n, log.txt
 		}
 	} else {
 		msgbox 上传失败，请稍候再试！
@@ -119,18 +116,18 @@ EXIT:
 ExitApp
 
 READINI:
-IfNotExist,%applicationname%.ini 
+IfNotExist,%applicationname%.ini
 {
 	ini=;%applicationname%.ini
-	ini=%ini%`n`;key=       快捷键设置：对应按键win(#),ctrl(^),alt(!),shitf(+)，默认是(^!s)
-	ini=%ini%`n`;urlType=   返回结果url：0-原始地址(默认)，1-markdown地址
-	ini=%ini%`n`;log=       是否记录日志：0-不记录，1-记录(默认)
+	ini=%ini%`n`;key: 快捷键设置：对应按键win(#),ctrl(^),alt(!),shitf(+)，默认是(^!s)
+	ini=%ini%`n`;urlType: 返回结果url：0-原始地址(默认)，1-markdown地址
+	ini=%ini%`n`;secretToken: sm.ms账号登录获取: https://sm.ms/home/apitoken
 	ini=%ini%`n`;(改完配置，重启生效)
 	ini=%ini%`n
 	ini=%ini%`n[Settings]
 	ini=%ini%`nkey=^!s
 	ini=%ini%`nurlType=0
-	ini=%ini%`nlog=1
+	ini=%ini%`nsecretToken=请配置自己的Secret Token
 	ini=%ini%`n
 	FileAppend,%ini%,%applicationname%.ini
 	ini=
@@ -140,13 +137,9 @@ Return
 ABOUT:
 Gui,99:Destroy
 Gui,99:Margin,15,15
-Gui,99:Font,Bold
-Gui,99:Add,Text,x+10 yp+10,致谢
-Gui,99:Font
-Gui,99:Add,Text,y+10,感谢@Showfom提供这么好的图床(https://sm.ms)
 
 Gui,99:Font,Bold
-Gui,99:Add,Text,y+20, %applicationname% v2.0.0 (20200106)
+Gui,99:Add,Text,y+10, %applicationname% v2.0.1 (20220305)
 Gui,99:Font
 Gui,99:Add,Text,y+10,选中图片(可多选)按快捷键(默认:Ctrl+Alt+S)上传图片到sm.ms，保存图片地址到剪切板
 Gui,99:Font,CBlue Underline
@@ -157,6 +150,11 @@ Gui,99:Add,Text,y+20,github地址(★)
 Gui,99:Font
 Gui,99:Font,CBlue Underline
 Gui,99:Add,Link,y+5, <a href="http://github.com/kookob/smpic">http://github.com/kookob/smpic</a>
+
+Gui,99:Font,Bold
+Gui,99:Add,Text,y+20,致谢
+Gui,99:Font
+Gui,99:Add,Text,y+10,感谢 https://sm.ms 提供的图床
 
 Gui,99:Show,,%applicationname% About
 hCurs:=DllCall("LoadCursor","UInt",NULL,"Int",32649,"UInt")
